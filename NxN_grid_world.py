@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 import os
+import json
 
 def print_maze(maze):
     print("")
@@ -155,7 +156,19 @@ alpha = 0.5
 
 
 transition_model = build_transition_model(N)
-q_table = build_q_table(N)
+
+q_table_name = "q_table.json"
+
+if os.path.exists(q_table_name):
+    with open(q_table_name, "r") as file:
+        try:
+            json_data = json.load(file)
+            q_table = {int(k): v for k,v in json_data.items()}
+        except json.JSONDecodeError:
+            print("Error in decoding the jsonfile.")
+            q_table = build_q_table(N)  
+else:
+    q_table = build_q_table(N)
 
 
 # algorithm = "sarsa"
@@ -181,12 +194,12 @@ for t in training_time: # for each episode
     new_state = transition_model.get(current_state).get(current_action)  
     reward, reward_message = get_reward(current_state, new_state)
     move_player(current_state, new_state)
-
+    
     _ = os.system("cls")
     print_maze(maze)
     
     print(f"timestep: {t+1}")
-    print(f"I moved to the position {new_state}")
+    print(f"I moved to the position {new_state} ({current_state}-->{new_state})")
     print(f"{reward_message} reward: {reward}")
 
     new_action, next_q_estimate = choose_action(new_state, verbose=(not new_state==final_state))
@@ -200,11 +213,16 @@ for t in training_time: # for each episode
 
     current_state = new_state
     current_action, old_q_estimate = new_action, next_q_estimate
-    
+
     if current_state == N**2-1:
         break
-    
+
     time.sleep(4)
+
+with open(q_table_name, "w") as file:
+    json.dump(q_table, file, indent=4)
+
+print("Q-table saved.")
 
 print("")
 print(f"Episode time (iterations): {t+1}")
