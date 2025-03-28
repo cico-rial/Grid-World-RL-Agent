@@ -13,6 +13,9 @@ def parsing_arguments():
     )
       
     parser.add_argument('--train', '-t', type=int, nargs="?", help="whether to train the agent or not.")
+    parser.add_argument('--grid', '-n', type=int, default=3, help="size of the N-grid world")
+    parser.add_argument('--reset', '-r', type=lambda x: (str(x).lower() == "true"), default=True, help="whether to train the agent or not.")
+
 
     # Disallow unrecognized arguments
     args = parser.parse_args()
@@ -57,9 +60,22 @@ def build_transition_model(N):
     return transition_model
 
 
-def build_q_table(N):
+def build_q_table(N, reset: bool):
+    
     positions = range(0,N**2)
     q_table = {position: {action: 0 for action in actions} for position in positions}
+
+    if os.path.exists(q_table_name) and not reset:
+        with open(q_table_name, "r") as file:
+            try:
+                json_data = json.load(file)
+                assert len(json_data.keys()) == N**2 # checking whether the current size of the board matches the previous saved one.
+                q_table = {int(k): v for k,v in json_data.items()}
+            except json.JSONDecodeError:
+                print("Error in decoding the jsonfile.")  
+            except AssertionError:
+                print("The grid size has changed. Building a new one.")
+
     return q_table
 
 
@@ -143,24 +159,25 @@ def get_best_q_value(current_state):
 
 if __name__ == "__main__":
 
-    _ = os.system("cls")
+    _ = os.system("cls") #??
     args = parsing_arguments()
 
     episodes = args.train
-    try:
+    N = args.grid ## bro you can set the default value as the length of last-saved q_table
+    reset = args.reset
+
+    try: # can modify with a parsechecker (if-else)
         episodes = int(episodes)
+        # checking the consistency of all the arguments!
         training=True
     except:
-        print(f"No training. {episodes}")
+        print(f"No training.")
         episodes = 1
         training=False
        
-
-    N = 3
-
     player = "P"
     goal = "G"
-    initial_state = 0
+    initial_state = 0 # can set a random or custom initial state!!
     final_state = N**2 - 1
 
 
@@ -185,18 +202,7 @@ if __name__ == "__main__":
     transition_model = build_transition_model(N)
 
     q_table_name = "q_table.json"
-
-    if os.path.exists(q_table_name):
-        with open(q_table_name, "r") as file:
-            try:
-                json_data = json.load(file)
-                q_table = {int(k): v for k,v in json_data.items()}
-            except json.JSONDecodeError:
-                print("Error in decoding the jsonfile.")
-                q_table = build_q_table(N)  
-    else:
-        q_table = build_q_table(N)
-
+    q_table = build_q_table(N, reset=(training or reset))
 
     # algorithm = "sarsa"
     algorithm = "q-learning"
@@ -207,15 +213,14 @@ if __name__ == "__main__":
 
         maze, visited_states, learning_history = reset_position(maze, visited_states, learning_history)
 
-        print_maze(maze)
-        print("timestep: 0")
-
         training_time = range(0,1000)
         current_state = initial_state
-        print(f"I'm in position {current_state} and the episode just started.")
+        if not training:
+            print_maze(maze)
+            print("timestep: 0")
+            print(f"I'm in position {current_state} and the episode just started.")
 
-        current_action, old_q_estimate = choose_action(current_state)
-        # print("")
+        current_action, old_q_estimate = choose_action(current_state, verbose=(not training))
 
         if not training:
             time.sleep(4)
@@ -225,12 +230,14 @@ if __name__ == "__main__":
             reward, reward_message = get_reward(current_state, new_state)
             move_player(current_state, new_state)
             
-            _ = os.system("cls")
-            print_maze(maze)
-            
-            print(f"timestep: {t+1}")
-            print(f"I moved to the position {new_state} ({current_state}-->{new_state})")
-            print(f"{reward_message} reward: {reward}")
+            if not training:
+                _ = os.system("cls")
+                print(f"Running the {algorithm} algorithm")
+                print_maze(maze)
+                
+                print(f"timestep: {t+1}")
+                print(f"I moved to the position {new_state} ({current_state}-->{new_state})")
+                print(f"{reward_message} reward: {reward}")
 
             new_action, next_q_estimate = choose_action(new_state, verbose=((not new_state==final_state) and not training))
 
@@ -255,5 +262,5 @@ if __name__ == "__main__":
 
         print("Q-table saved.")
 
-        print("")
+        # print("")
         print(f"Episode time (iterations): {t+1}")
