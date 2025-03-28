@@ -4,6 +4,20 @@ import matplotlib.pyplot as plt
 import time
 import os
 import json
+import argparse
+
+def parsing_arguments():
+
+    parser = argparse.ArgumentParser(
+        description=f"Launching the program with customized commands."
+    )
+      
+    parser.add_argument('--train', '-t', type=int, nargs="?", help="whether to train the agent or not.")
+
+    # Disallow unrecognized arguments
+    args = parser.parse_args()
+
+    return args
 
 def print_maze(maze):
     print("")
@@ -127,102 +141,119 @@ def get_best_q_value(current_state):
     return best_q_value
 
 
-_ = os.system("cls")
+if __name__ == "__main__":
 
-N = 3
-
-player = "P"
-goal = "G"
-initial_state = 0
-final_state = N**2 - 1
-
-
-maze = [0 for i in range(0,N**2)]
-maze[initial_state] = player
-maze[final_state] = goal
-visited_states = [initial_state]
-
-actions = ["up", "down", "left", "right"]
-
-learning_history = [maze.copy()]
-    
-goal_reward = 1
-wall_reward = -1
-repeated_state_reward = -1
-step_reward = -0.1
-
-gamma = 0.9
-alpha = 0.5
-
-
-transition_model = build_transition_model(N)
-
-q_table_name = "q_table.json"
-
-if os.path.exists(q_table_name):
-    with open(q_table_name, "r") as file:
-        try:
-            json_data = json.load(file)
-            q_table = {int(k): v for k,v in json_data.items()}
-        except json.JSONDecodeError:
-            print("Error in decoding the jsonfile.")
-            q_table = build_q_table(N)  
-else:
-    q_table = build_q_table(N)
-
-
-# algorithm = "sarsa"
-algorithm = "q-learning"
-
-print(f"Running the {algorithm} algorithm")
-
-maze, visited_states, learning_history = reset_position(maze, visited_states, learning_history)
-
-print_maze(maze)
-print("timestep: 0")
-
-training_time = range(0,1000)
-current_state = initial_state
-print(f"I'm in position {current_state} and the episode just started.")
-
-current_action, old_q_estimate = choose_action(current_state)
-# print("")
-
-time.sleep(4)
-for t in training_time: # for each episode 
-    
-    new_state = transition_model.get(current_state).get(current_action)  
-    reward, reward_message = get_reward(current_state, new_state)
-    move_player(current_state, new_state)
-    
     _ = os.system("cls")
-    print_maze(maze)
-    
-    print(f"timestep: {t+1}")
-    print(f"I moved to the position {new_state} ({current_state}-->{new_state})")
-    print(f"{reward_message} reward: {reward}")
+    args = parsing_arguments()
 
-    new_action, next_q_estimate = choose_action(new_state, verbose=(not new_state==final_state))
+    episodes = args.train
+    try:
+        episodes = int(episodes)
+        training=True
+    except:
+        print(f"No training. {episodes}")
+        episodes = 1
+        training=False
+       
 
-    if algorithm == "sarsa":
-        updated_q_estimate = old_q_estimate + alpha*(reward + gamma*next_q_estimate - old_q_estimate)
-    if algorithm == "q-learning":
-        updated_q_estimate = old_q_estimate + alpha*(reward + gamma*get_best_q_value(current_state) - old_q_estimate)
+    N = 3
 
-    q_table[current_state][current_action] = updated_q_estimate
+    player = "P"
+    goal = "G"
+    initial_state = 0
+    final_state = N**2 - 1
 
-    current_state = new_state
-    current_action, old_q_estimate = new_action, next_q_estimate
 
-    if current_state == N**2-1:
-        break
+    maze = [0 for i in range(0,N**2)]
+    maze[initial_state] = player
+    maze[final_state] = goal
+    visited_states = [initial_state]
 
-    time.sleep(4)
+    actions = ["up", "down", "left", "right"]
 
-with open(q_table_name, "w") as file:
-    json.dump(q_table, file, indent=4)
+    learning_history = [maze.copy()]
+        
+    goal_reward = 1
+    wall_reward = -1
+    repeated_state_reward = -1
+    step_reward = -0.1
 
-print("Q-table saved.")
+    gamma = 0.9
+    alpha = 0.5
 
-print("")
-print(f"Episode time (iterations): {t+1}")
+
+    transition_model = build_transition_model(N)
+
+    q_table_name = "q_table.json"
+
+    if os.path.exists(q_table_name):
+        with open(q_table_name, "r") as file:
+            try:
+                json_data = json.load(file)
+                q_table = {int(k): v for k,v in json_data.items()}
+            except json.JSONDecodeError:
+                print("Error in decoding the jsonfile.")
+                q_table = build_q_table(N)  
+    else:
+        q_table = build_q_table(N)
+
+
+    # algorithm = "sarsa"
+    algorithm = "q-learning"
+
+    print(f"Running the {algorithm} algorithm")
+
+    for episode in range(episodes):
+
+        maze, visited_states, learning_history = reset_position(maze, visited_states, learning_history)
+
+        print_maze(maze)
+        print("timestep: 0")
+
+        training_time = range(0,1000)
+        current_state = initial_state
+        print(f"I'm in position {current_state} and the episode just started.")
+
+        current_action, old_q_estimate = choose_action(current_state)
+        # print("")
+
+        if not training:
+            time.sleep(4)
+        for t in training_time: # for each episode 
+            
+            new_state = transition_model.get(current_state).get(current_action)  
+            reward, reward_message = get_reward(current_state, new_state)
+            move_player(current_state, new_state)
+            
+            _ = os.system("cls")
+            print_maze(maze)
+            
+            print(f"timestep: {t+1}")
+            print(f"I moved to the position {new_state} ({current_state}-->{new_state})")
+            print(f"{reward_message} reward: {reward}")
+
+            new_action, next_q_estimate = choose_action(new_state, verbose=((not new_state==final_state) and not training))
+
+            if algorithm == "sarsa":
+                updated_q_estimate = old_q_estimate + alpha*(reward + gamma*next_q_estimate - old_q_estimate)
+            if algorithm == "q-learning":
+                updated_q_estimate = old_q_estimate + alpha*(reward + gamma*get_best_q_value(current_state) - old_q_estimate)
+
+            q_table[current_state][current_action] = updated_q_estimate
+
+            current_state = new_state
+            current_action, old_q_estimate = new_action, next_q_estimate
+
+            if current_state == N**2-1:
+                break
+
+            if not training:
+                time.sleep(4)
+
+        with open(q_table_name, "w") as file:
+            json.dump(q_table, file, indent=4)
+
+        print("Q-table saved.")
+
+        print("")
+        print(f"Episode time (iterations): {t+1}")
