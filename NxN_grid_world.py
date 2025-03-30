@@ -5,6 +5,7 @@ import time
 import os
 import json
 import argparse
+import math
 
 def parsing_arguments():
 
@@ -13,8 +14,9 @@ def parsing_arguments():
     )
       
     parser.add_argument('--train', '-t', type=int, nargs="?", help="whether to train the agent or not.")
-    parser.add_argument('--grid', '-n', type=int, default=3, help="size of the N-grid world")
-    parser.add_argument('--reset', '-r', type=lambda x: (str(x).lower() == "true"), default=True, help="whether to train the agent or not.")
+    parser.add_argument('--grid', '-n', type=int, default=get_q_table_metadata().get('N'), help="size of the N-grid world")
+    parser.add_argument('--reset', '-r', type=lambda x: (str(x).lower() == "true"), default=False, help="whether to train the agent or not.")
+    parser.add_argument('--refresh-rate', '-rr', type=float, default=4, help="time to wait between one move and the other.")
 
 
     # Disallow unrecognized arguments
@@ -23,21 +25,38 @@ def parsing_arguments():
     return args
 
 def print_maze(maze):
+    maze_representation = ""
+    count = 0
+    for x in maze:
+        if count != N:
+            maze_representation += str(x) + "  "
+            count += 1
+        else:
+            maze_representation += f"\n{str(x)}  "
+            count = 1
     print("")
-    print(maze[:N])
-    for i in range(1,N-1):
-        print(maze[i*N:(i+1)*N])
-    print(maze[N**2-N:])
+    print(maze_representation)
     print("")
-
 
 def reset_position(maze, visited_states, learning_history):
-    maze = [0 for i in range(0,N**2)]
+    maze = [blank_position for i in range(0,N**2)]
     maze[initial_state] = player
     maze[final_state] = goal
     visited_states = [initial_state]
     learning_history = [maze.copy()]
     return maze, visited_states, learning_history
+
+def get_q_table_metadata():
+    metadata = {"N": 3, "episodes_trained": 0} #default value in case the json file has never created before.
+    if os.path.exists(q_table_name):
+        with open(q_table_name, "r") as file:
+            try:
+                json_data = json.load(file)
+                metadata = json_data.get('metadata')
+            except json.JSONDecodeError:
+                print("Error in decoding the jsonfile.")
+    return metadata
+
 
 def build_transition_model(N):
     positions = range(0,N**2)
@@ -64,17 +83,38 @@ def build_q_table(N, reset: bool):
     
     positions = range(0,N**2)
     q_table = {position: {action: 0 for action in actions} for position in positions}
+    q_table['metadata'] = {"N": N,
+                           "episodes_trained": 0}
 
     if os.path.exists(q_table_name) and not reset:
         with open(q_table_name, "r") as file:
             try:
                 json_data = json.load(file)
-                assert len(json_data.keys()) == N**2 # checking whether the current size of the board matches the previous saved one.
-                q_table = {int(k): v for k,v in json_data.items()}
+                assert len(json_data.keys()) - 1 == N**2 # checking whether the current size of the board matches the previous saved one.
+                # -1 because i also store the metadata.
+                q_table = {int(k): v for k,v in json_data.items() if k != "metadata"}
+                q_table['metadata'] = json_data.get('metadata')
             except json.JSONDecodeError:
                 print("Error in decoding the jsonfile.")  
             except AssertionError:
-                print("The grid size has changed. Building a new one.")
+                print("Failed to import the saved grid-world.")
+                print("The grid size has changed.")
+                print("Not a problem, I'm building a new one!")
+                time.sleep(refresh_rate)
+                _ = os.system("cls")
+                # print(f"old:{len(json_data.keys())} new:{N**2} ")
+    else:
+        if reset:
+            print("Requested reset for the grid-world.")
+            print("Not a problem, I'm building a new one!")
+            time.sleep(refresh_rate)
+            _ = os.system("cls")
+        else:
+            print("Failed to import the saved grid-world.")
+            print("The file has never been created before.")
+            print("Not a problem, I'm building a new one!")
+            time.sleep(refresh_rate)
+            _ = os.system("cls")
 
     return q_table
 
@@ -139,7 +179,7 @@ def get_reward(current_state, new_state):
     return reward, reward_message
 
 def move_player(current_state, new_state):
-    maze[current_state] = 0
+    maze[current_state] = stepped_position
     maze[new_state] = player
     learning_history.append(maze.copy())
     if new_state not in visited_states:
@@ -159,29 +199,33 @@ def get_best_q_value(current_state):
 
 if __name__ == "__main__":
 
+    q_table_name = "q_table.json"
+
     _ = os.system("cls") #??
     args = parsing_arguments()
 
     episodes = args.train
     N = args.grid ## bro you can set the default value as the length of last-saved q_table
     reset = args.reset
+    refresh_rate = args.refresh_rate
 
     try: # can modify with a parsechecker (if-else)
         episodes = int(episodes)
         # checking the consistency of all the arguments!
         training=True
     except:
-        print(f"No training.")
         episodes = 1
         training=False
        
-    player = "P"
-    goal = "G"
+    player = "🏃"
+    goal = "⛳"
+    blank_position = "🌱"
+    stepped_position = '👣'
     initial_state = 0 # can set a random or custom initial state!!
     final_state = N**2 - 1
 
 
-    maze = [0 for i in range(0,N**2)]
+    maze = [blank_position for i in range(0,N**2)]
     maze[initial_state] = player
     maze[final_state] = goal
     visited_states = [initial_state]
@@ -200,14 +244,20 @@ if __name__ == "__main__":
 
 
     transition_model = build_transition_model(N)
-
-    q_table_name = "q_table.json"
-    q_table = build_q_table(N, reset=(training or reset))
+    q_table = build_q_table(N, reset=reset) 
 
     # algorithm = "sarsa"
     algorithm = "q-learning"
 
-    print(f"Running the {algorithm} algorithm")
+    if not training:
+        print(f"Grid size: {N}x{N}")
+        print(f"Algorithm: {algorithm}")
+        print(f"Number of episodes trained (up to now): {q_table.get('metadata').get('episodes_trained')}")
+    else:
+        print(f"Grid size: {N}x{N}")
+        print(f"Training the agent for {episodes} episodes to find the exit in the grid-world.")
+        print(f"Learning the q-table with {algorithm} algorithm.")
+
 
     for episode in range(episodes):
 
@@ -223,7 +273,7 @@ if __name__ == "__main__":
         current_action, old_q_estimate = choose_action(current_state, verbose=(not training))
 
         if not training:
-            time.sleep(4)
+            time.sleep(refresh_rate)
         for t in training_time: # for each episode 
             
             new_state = transition_model.get(current_state).get(current_action)  
@@ -232,7 +282,9 @@ if __name__ == "__main__":
             
             if not training:
                 _ = os.system("cls")
-                print(f"Running the {algorithm} algorithm")
+                print(f"Grid size: {N}x{N}")
+                print(f"Algorithm: {algorithm}")
+                print(f"Number of episodes trained (up to now): {q_table.get('metadata').get('episodes_trained')}")
                 print_maze(maze)
                 
                 print(f"timestep: {t+1}")
@@ -255,12 +307,13 @@ if __name__ == "__main__":
                 break
 
             if not training:
-                time.sleep(4)
+                time.sleep(refresh_rate)
+            
+        q_table['metadata']['episodes_trained'] += 1
 
         with open(q_table_name, "w") as file:
             json.dump(q_table, file, indent=4)
 
-        print("Q-table saved.")
-
-        # print("")
-        print(f"Episode time (iterations): {t+1}")
+        if not training:
+            print("Q-table saved.")
+            print(f"Episode time (iterations): {t+1}")
