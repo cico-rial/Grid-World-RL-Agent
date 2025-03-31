@@ -26,17 +26,12 @@ def parsing_arguments():
     parser.add_argument('--algorithm', '-a', default="q-learning", help="Specify the algorithm to use for make the agent learn.\n"
     "Choices: ['q-learning','sarsa']\n"
     "Default: 'q-learning'")
-    # parser.add_argument('--final-point', '-fp', type=int, default=get_q_table_metadata().get('N')**2 - 1, 
-    #                     # choices=[x for x in range(get_q_table_metadata().get('N')**2)], 
-    #                     help="Specify the final position of the goal in the grid-world. This should be set once every training setting! "
-    # "Default: (Last position of the grid.)")
-
-
+    
     # Disallow unrecognized arguments
     args = parser.parse_args()
 
     # here i can put all the logic i want!
-    if args.starting_point >= args.grid_size:
+    if args.starting_point >= (args.grid_size)**2 - 1:
         parser.error(f"-starting-point must be between 0 and {args.grid_size}, but got {args.starting_point}")
 
     return args
@@ -64,7 +59,7 @@ def reset_position(maze, visited_states, learning_history):
     return maze, visited_states, learning_history
 
 def get_q_table_metadata():
-    metadata = {"N": 3, "episodes_trained": 0} #default value in case the json file has never created before.
+    metadata = {"N": 3, "episodes_trained": 0} # default value in case the json file has never created before.
     if os.path.exists(q_table_name):
         with open(q_table_name, "r") as file:
             try:
@@ -163,6 +158,15 @@ def build_q_table(N, reset: bool):
             _ = os.system("cls")
 
     return q_table
+
+def save_q_table(q_table):
+    try:
+        with open(q_table_name, "w") as file:
+            json.dump(q_table, file, indent=4)
+        print("Q-table succesfully saved.")
+    except:
+        print("Failed to save the Q-table.")
+        print("Not much to say about it I'm sorry :(")
 
 
 def choose_action(current_state, verbose=True):
@@ -276,13 +280,7 @@ if __name__ == "__main__":
     learning_history = [maze.copy()]
 
     config = get_hyperparameters('config.json')
-        
-    # goal_reward = 1
-    # wall_reward = -1
-    # repeated_state_reward = -1
-    # step_reward = -0.1
-    # gamma = 0.9
-    # alpha = 0.5
+
     goal_reward = config.get('goal_reward')
     wall_reward = config.get('wall_reward')
     repeated_state_reward = config.get('repeated_state_reward')
@@ -359,15 +357,12 @@ if __name__ == "__main__":
                 time.sleep(refresh_rate)
             
         total_iterations += t+1
-        q_table['metadata']['episodes_trained'] += 1
-
-        with open(q_table_name, "w") as file:
-            json.dump(q_table, file, indent=4)
+        q_table['metadata']['episodes_trained'] += 1        
 
         if not training:
-            print("Q-table saved.")
             print(f"Episode time (iterations): {t+1}")
 
+    save_q_table(q_table)
     end_time = time.time()
     total_time = round(end_time - start_time, 3)
 
