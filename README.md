@@ -29,7 +29,7 @@ cd grid-world-rl
 
 You can run the script with custom commands:
 ```
-usage: name.py [-h] [--train TRAIN] [--grid-size GRID_SIZE] [--reset RESET] [--refresh-rate REFRESH_RATE] [--starting-point STARTING_POINT]
+usage: grid_world_rl.py [-h] [--train TRAIN] [--grid-size GRID_SIZE] [--reset RESET] [--refresh-rate REFRESH_RATE] [--starting-point STARTING_POINT]
                          [--algorithm ALGORITHM]
 
 Launching the grid-world with customized commands.
@@ -53,17 +53,17 @@ options:
 #### Training your agent
 For training your agent, you can run the program with the following command:
 ```sh
-python name.py --grid-size 3 --train 10
+python grid_world_rl.py --grid-size 3 --train 10
 ```
 
 For testing your agent, you can simply run the command:
 ```sh
-python name.py 
+python grid_world_rl.py 
 ```
 
 It's nice to note that you can launch the program by specifying custom options:
 ```sh
-python name.py --grid-size 10 --refresh-rate 1 --starting-point 0 --algorithm sarsa
+python grid_world_rl.py --grid-size 10 --refresh-rate 1 --starting-point 0 --algorithm sarsa
 ```
 ## Customization
 You can modify the reward structure and hyperparameters in the `config.json` file to experiment with different settings.
