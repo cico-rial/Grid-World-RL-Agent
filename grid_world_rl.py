@@ -13,17 +13,18 @@ def parsing_arguments():
         description=f"Launching the grid-world with customized commands."
     )
       
-    parser.add_argument('--train', '-t', type=int, default=1, help="Specify the number of episodes to train your agent with. "
+    parser.add_argument('--train', '-t', type=int, default=1, help="Specify the number of episodes to train your agent with.\n"
     "Default: 1")
-    parser.add_argument('--grid-size', '-n', type=int, default=get_q_table_metadata().get('N'), help="Specify the size of the N-grid world. "
+    parser.add_argument('--grid-size', '-n', type=int, default=get_q_table_metadata().get('N'), help="Specify the size of the N-grid world.\n"
     "Default: 3")
-    parser.add_argument('--reset', '-r', type=lambda x: (str(x).lower() == "true"), default=False, help="Specify whether to reset the learning to an initial state. "
+    parser.add_argument('--reset', '-r', type=lambda x: (str(x).lower() == "true"), default=False, help="Specify whether to reset the learning to an initial state.\n"
     "Default: False")
-    parser.add_argument('--refresh-rate', '-rr', type=float, default=4, help="Specify the refresh rate (in seconds) of the terminal. It affects the time to wait between the iterations. "
+    parser.add_argument('--refresh-rate', '-rr', type=float, default=4, help="Specify the refresh rate (in seconds) of the terminal. It affects the time to wait between the iterations.\n"
     "Defualt: 4")
-    parser.add_argument('--starting-point', '-sp', type=int, default=0, help="Specify the initial position of the player in the grid-world. "
+    parser.add_argument('--starting-point', '-sp', type=int, default=0, help="Specify the initial position of the player in the grid-world.\n"
     "Default: 0")
-    parser.add_argument('--algorithm', '-a', default="q-learning", help="Specify the algorithm to use for make the agent learn. Choices: ['q-learning','sarsa']"
+    parser.add_argument('--algorithm', '-a', default="q-learning", help="Specify the algorithm to use for make the agent learn.\n"
+    "Choices: ['q-learning','sarsa']\n"
     "Default: 'q-learning'")
     # parser.add_argument('--final-point', '-fp', type=int, default=get_q_table_metadata().get('N')**2 - 1, 
     #                     # choices=[x for x in range(get_q_table_metadata().get('N')**2)], 
@@ -70,8 +71,37 @@ def get_q_table_metadata():
                 json_data = json.load(file)
                 metadata = json_data.get('metadata')
             except json.JSONDecodeError:
-                print("Error in decoding the jsonfile.")
+                print("Error in decoding the jsonfile. Setting the default value for N (3)")
     return metadata
+
+def get_hyperparameters(file_name):
+    config = {
+    "epsilon" : 0.05,
+    "goal_reward" : 1,
+    "wall_reward" : -1,
+    "repeated_state_reward" : -1,
+    "step_reward" : -0.1,
+    "gamma" : 0.9,
+    "alpha" : 0.5
+}
+    if os.path.exists(file_name):
+        with open(file_name, "r") as file:
+            try:
+                config = json.load(file)
+            except json.JSONDecodeError:
+                print("Error in decoding the config. Setting the default values for the hyperparameters.")
+                print(config)
+    else:
+        with open(file_name, "w") as file:
+            json.dump(config, file, indent=4)
+        print("Failed to import the saved config.json")
+        print("The file has never been created before.")
+        print("Not a problem, I'm building a new one!")
+        time.sleep(refresh_rate)
+        _ = os.system("cls")
+    
+    return config
+
 
 
 def build_transition_model(N):
@@ -140,7 +170,8 @@ def choose_action(current_state, verbose=True):
     if verbose:
         print(f"q scores: {q_table.get(current_state)}")
         
-    epsilon = 0.05
+    # epsilon = 0.05
+    epsilon = get_hyperparameters('config.json').get('epsilon')
     sample = random.uniform(0,1)
  
     next_action = random.choice(actions) # setting an initial random action
@@ -243,21 +274,25 @@ if __name__ == "__main__":
     actions = ["up", "down", "left", "right"]
 
     learning_history = [maze.copy()]
-        
-    goal_reward = 1
-    wall_reward = -1
-    repeated_state_reward = -1
-    step_reward = -0.1
 
-    gamma = 0.9
-    alpha = 0.5
+    config = get_hyperparameters('config.json')
+        
+    # goal_reward = 1
+    # wall_reward = -1
+    # repeated_state_reward = -1
+    # step_reward = -0.1
+    # gamma = 0.9
+    # alpha = 0.5
+    goal_reward = config.get('goal_reward')
+    wall_reward = config.get('wall_reward')
+    repeated_state_reward = config.get('repeated_state_reward')
+    step_reward = config.get('step_reward')
+    gamma = config.get('gamma')
+    alpha = config.get('alpha')
 
 
     transition_model = build_transition_model(N)
     q_table = build_q_table(N, reset=reset) 
-
-    # algorithm = "sarsa"
-    # algorithm = "q-learning"
 
     if not training:
         print(f"Grid size: {N}x{N}")

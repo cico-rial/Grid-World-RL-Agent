@@ -1,0 +1,9 @@
+{
+    "epsilon": 0.05,
+    "goal_reward": 1,
+    "wall_reward": -1,
+    "repeated_state_reward": -1,
+    "step_reward": -0.1,
+    "gamma": 0.9,
+    "alpha": 0.5
+}
