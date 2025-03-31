@@ -6,9 +6,15 @@ This project implements an AI agent that learns to navigate a grid world and rea
 
 ### Q-learning (Off-policy)
 Q-learning is a value-based reinforcement learning algorithm that updates its action-value function using the Bellman equation. The agent learns the optimal policy by selecting actions that maximize future rewards, regardless of the policy it follows during exploration.
+\[
+Q(s_t, a_t) \leftarrow Q(s_t, a_t) + \alpha \left[ r_{t+1} + \gamma \max_{a} Q(s_{t+1}, a) - Q(s_t, a_t) \right]
+\]
 
 ### SARSA (On-policy)
 SARSA is another value-based reinforcement learning algorithm, but it updates its action-value function based on the actual actions taken under the current policy. This means that it learns a policy while following it, making it more sensitive to exploration strategies.
+\[
+Q(s_t, a_t) \leftarrow Q(s_t, a_t) + \alpha \left[ r_{t+1} + \gamma Q(s_{t+1}, a_{t+1}) - Q(s_t, a_t) \right]
+\]
 
 ## Setup Instructions
 
