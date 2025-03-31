@@ -10,17 +10,33 @@ import math
 def parsing_arguments():
 
     parser = argparse.ArgumentParser(
-        description=f"Launching the program with customized commands."
+        description=f"Launching the grid-world with customized commands."
     )
       
-    parser.add_argument('--train', '-t', type=int, nargs="?", help="whether to train the agent or not.")
-    parser.add_argument('--grid', '-n', type=int, default=get_q_table_metadata().get('N'), help="size of the N-grid world")
-    parser.add_argument('--reset', '-r', type=lambda x: (str(x).lower() == "true"), default=False, help="whether to train the agent or not.")
-    parser.add_argument('--refresh-rate', '-rr', type=float, default=4, help="time to wait between one move and the other.")
+    parser.add_argument('--train', '-t', type=int, default=1, help="Specify the number of episodes to train your agent with. "
+    "Default: 1")
+    parser.add_argument('--grid-size', '-n', type=int, default=get_q_table_metadata().get('N'), help="Specify the size of the N-grid world. "
+    "Default: 3")
+    parser.add_argument('--reset', '-r', type=lambda x: (str(x).lower() == "true"), default=False, help="Specify whether to reset the learning to an initial state. "
+    "Default: False")
+    parser.add_argument('--refresh-rate', '-rr', type=float, default=4, help="Specify the refresh rate (in seconds) of the terminal. It affects the time to wait between the iterations. "
+    "Defualt: 4")
+    parser.add_argument('--starting-point', '-sp', type=int, default=0, help="Specify the initial position of the player in the grid-world. "
+    "Default: 0")
+    parser.add_argument('--algorithm', '-a', default="q-learning", help="Specify the algorithm to use for make the agent learn. Choices: ['q-learning','sarsa']"
+    "Default: 'q-learning'")
+    # parser.add_argument('--final-point', '-fp', type=int, default=get_q_table_metadata().get('N')**2 - 1, 
+    #                     # choices=[x for x in range(get_q_table_metadata().get('N')**2)], 
+    #                     help="Specify the final position of the goal in the grid-world. This should be set once every training setting! "
+    # "Default: (Last position of the grid.)")
 
 
     # Disallow unrecognized arguments
     args = parser.parse_args()
+
+    # here i can put all the logic i want!
+    if args.starting_point >= args.grid_size:
+        parser.error(f"-starting-point must be between 0 and {args.grid_size}, but got {args.starting_point}")
 
     return args
 
@@ -199,32 +215,26 @@ def get_best_q_value(current_state):
 
 if __name__ == "__main__":
 
+    _ = os.system("cls") #??
+
     q_table_name = "q_table.json"
 
-    _ = os.system("cls") #??
     args = parsing_arguments()
 
     episodes = args.train
-    N = args.grid ## bro you can set the default value as the length of last-saved q_table
+    N = args.grid_size ## bro you can set the default value as the length of last-saved q_table
     reset = args.reset
     refresh_rate = args.refresh_rate
-
-    try: # can modify with a parsechecker (if-else)
-        episodes = int(episodes)
-        # checking the consistency of all the arguments!
-        training=True
-    except:
-        episodes = 1
-        training=False
-       
-    player = "🏃"
-    goal = "⛳"
-    blank_position = "🌱"
-    stepped_position = '👣'
-    initial_state = 0 # can set a random or custom initial state!!
+    initial_state = args.starting_point
     final_state = N**2 - 1
+    training = (episodes != 1)
+    algorithm = args.algorithm
 
-
+    player = "🏃"
+    goal = "🚩" 
+    blank_position = "🌱" 
+    stepped_position = '👣' 
+    
     maze = [blank_position for i in range(0,N**2)]
     maze[initial_state] = player
     maze[final_state] = goal
@@ -247,7 +257,7 @@ if __name__ == "__main__":
     q_table = build_q_table(N, reset=reset) 
 
     # algorithm = "sarsa"
-    algorithm = "q-learning"
+    # algorithm = "q-learning"
 
     if not training:
         print(f"Grid size: {N}x{N}")
@@ -257,8 +267,12 @@ if __name__ == "__main__":
         print(f"Grid size: {N}x{N}")
         print(f"Training the agent for {episodes} episodes to find the exit in the grid-world.")
         print(f"Learning the q-table with {algorithm} algorithm.")
+        print(f"")
+        time.sleep(refresh_rate)
 
 
+    start_time = time.time()
+    total_iterations = 0
     for episode in range(episodes):
 
         maze, visited_states, learning_history = reset_position(maze, visited_states, learning_history)
@@ -303,12 +317,13 @@ if __name__ == "__main__":
             current_state = new_state
             current_action, old_q_estimate = new_action, next_q_estimate
 
-            if current_state == N**2-1:
+            if current_state == final_state:
                 break
 
             if not training:
                 time.sleep(refresh_rate)
             
+        total_iterations += t+1
         q_table['metadata']['episodes_trained'] += 1
 
         with open(q_table_name, "w") as file:
@@ -317,3 +332,10 @@ if __name__ == "__main__":
         if not training:
             print("Q-table saved.")
             print(f"Episode time (iterations): {t+1}")
+
+    end_time = time.time()
+    total_time = round(end_time - start_time, 3)
+
+    if training:
+        print(f"Succesfully trained! Now your agent should be able to find the exit more easily!")
+        print(f"Training time: {total_time} s ({total_iterations} iterations)")
