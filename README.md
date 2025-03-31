@@ -1,7 +1,7 @@
 # Grid World RL Agent
 
 This project implements an AI agent that learns to navigate a grid world and reach a goal using reinforcement learning. The agent can be trained using either **Q-learning** (off-policy) or **SARSA** (on-policy).  
-
+![Agent Training Example](images/example.png)
 
 ## Algorithms
 
