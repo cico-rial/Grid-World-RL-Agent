@@ -5,6 +5,7 @@ import time
 import os
 import json
 import argparse
+import tqdm
 import math
 
 def parsing_arguments():
@@ -163,8 +164,10 @@ def save_q_table(q_table):
     try:
         with open(q_table_name, "w") as file:
             json.dump(q_table, file, indent=4)
+        print("")
         print("Q-table succesfully saved.")
     except:
+        print("")
         print("Failed to save the Q-table.")
         print("Not much to say about it I'm sorry :(")
 
@@ -306,7 +309,7 @@ if __name__ == "__main__":
 
     start_time = time.time()
     total_iterations = 0
-    for episode in range(episodes):
+    for episode in tqdm.tqdm(range(episodes), disable=not training):
 
         maze, visited_states, learning_history = reset_position(maze, visited_states, learning_history)
 
@@ -362,10 +365,11 @@ if __name__ == "__main__":
         if not training:
             print(f"Episode time (iterations): {t+1}")
 
-    save_q_table(q_table)
     end_time = time.time()
     total_time = round(end_time - start_time, 3)
+    save_q_table(q_table)
 
     if training:
+        print
         print(f"Succesfully trained! Now your agent should be able to find the exit more easily!")
         print(f"Training time: {total_time} s ({total_iterations} iterations)")
